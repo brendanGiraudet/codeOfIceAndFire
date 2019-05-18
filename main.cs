@@ -98,21 +98,28 @@ class CodeIceAndFire
             {
                 System.Console.Error.WriteLine(u);
             });
+            game.Map.ForEach(m =>
+            {
+                System.Console.Error.WriteLine(m);
+            });
+            var rep = "";
             // Première unité
             if(me.Units.Count.Equals(0))
             {
-                Console.WriteLine("WAIT;TRAIN 1 " + me.Buildings.FirstOrDefault().Location.X+1 + " " + me.Buildings.FirstOrDefault().Location.Y );
+                var x = me.Buildings.FirstOrDefault().Location.X+1;
+                rep += "TRAIN 1 " + x + " " + me.Buildings.FirstOrDefault().Location.Y + ";";
             }
             else if(me.Units.FirstOrDefault() != null)
             {
                 var selectedUnit = me.Units.FirstOrDefault();
-                System.Console.Error.WriteLine(selectedUnit);
-                Console.WriteLine("WAIT;MOVE " + selectedUnit.ID + " " + selectedUnit.Location.X+1 + " " + selectedUnit.Location.Y );
+                var bestLocation = game.GetBestMove(selectedUnit.Location);
+                rep += "MOVE " + selectedUnit.ID + " " + bestLocation.X + " " + bestLocation.Y + ";";
             }
             else
             {
-                Console.WriteLine("WAIT");    
+                rep += "WAIT;";    
             }
+            System.Console.WriteLine(rep);
         }
     }
 }
@@ -155,7 +162,54 @@ class Game
     {
         return Map[loc.Y][loc.X].Equals('x');
     }
-
+    public bool CanMoveToHere(Location loc)
+    {
+        return !IsVoid(loc);
+    }
+   
+    public Location GetBestMove(Location loc)
+    {
+        var rightLoc = new Location
+        {
+            X = loc.X+1,
+            Y = loc.Y
+        };
+        var leftLoc = new Location
+        {
+            X = loc.X-1,
+            Y = loc.Y
+        };
+        var upLoc = new Location
+        {
+            X = loc.X,
+            Y = loc.Y-1
+        };
+        var bottomLoc = new Location
+        {
+            X = loc.X,
+            Y = loc.Y+1
+        };
+        if(CanMoveToHere(rightLoc) && IsNeutral(rightLoc))
+        {
+            return rightLoc;
+        }
+        else if(CanMoveToHere(leftLoc) && IsNeutral(leftLoc))
+        {
+            return leftLoc;
+        }
+        else if(CanMoveToHere(upLoc) && IsNeutral(upLoc))
+        {
+            return upLoc;
+        }
+        else if(CanMoveToHere(bottomLoc) && IsNeutral(bottomLoc))
+        {
+            return bottomLoc;
+        }
+        else
+        {
+            return loc;
+        }
+    }
 }
 class Player
 {
