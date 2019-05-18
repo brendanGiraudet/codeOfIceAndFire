@@ -46,7 +46,25 @@ class CodeIceAndFire
             // MAP
             for (int i = 0; i < 12; i++)
             {
-                game.Map.Add(Console.ReadLine());
+                var line = Console.ReadLine();
+                for (int j = 0; j < line.Length; j++)
+                {
+                    var location = new Location
+                    {
+                        X = j,
+                        Y = i,
+                        Value = line[j]
+                    };
+                    if(location.Equals('O') || location.Equals('o'))
+                    {
+                        me.Locations.Add(location);
+                    }
+                    if(location.Equals('X') || location.Equals('x'))
+                    {
+                        opponent.Locations.Add(location);
+                    }
+                    game.Map.Add(location);
+                }
             }
             // Buildings
             var buildings = new List<Building>();
@@ -90,27 +108,31 @@ class CodeIceAndFire
             me.Units = units.Where(u => u.Owner.Equals(ME)).ToList();
             opponent.Units = units.Where(u => u.Owner.Equals(OPPONENT)).ToList();
 
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
             Console.Error.WriteLine(me);
             me.Units.ForEach(u => 
             {
                 System.Console.Error.WriteLine(u);
             });
-            game.Map.ForEach(m =>
+            me.Locations.ForEach(l => 
             {
-                System.Console.Error.WriteLine(m);
+                System.Console.Error.WriteLine(l);
             });
-            var rep = "";
-            // Première unité
-            if(me.Units.Count.Equals(0))
+            
+            var rep = "";            
+            var trainLocation = me.GetTrainLocation();
+            System.Console.Error.WriteLine("train " + trainLocation);
+            var selectedUnit = me.Units.FirstOrDefault();
+            if(trainLocation == null)
             {
-                var x = me.Buildings.FirstOrDefault().Location.X+1;
-                rep += "TRAIN 1 " + x + " " + me.Buildings.FirstOrDefault().Location.Y + ";";
+                trainLocation = game.GetLocationToTrainUnitAroundHQ();
             }
-            else if(me.Units.FirstOrDefault() != null)
+            System.Console.Error.WriteLine("train " + trainLocation);
+            if(me.HaveEnoughGoldToUnitLvl1() && trainLocation != null)
             {
-                var selectedUnit = me.Units.FirstOrDefault();
+                rep += "TRAIN 1 " + trainLocation.X + " " + trainLocation.Y + ";";
+            }
+            else if(selectedUnit != null)
+            {
                 var bestLocation = game.GetBestMove(selectedUnit.Location);
                 rep += "MOVE " + selectedUnit.ID + " " + bestLocation.X + " " + bestLocation.Y + ";";
             }
@@ -136,34 +158,15 @@ public enum Team
 }
 class Game
 {
-    public List<string> Map { get; set; }  = new List<string>();
-    public bool IsVoid(Location loc)
+    public List<Location> Map { get; set; }  = new List<Location>();
+
+    public List<Location> GetOwnedLocation()
     {
-        return Map[loc.Y][loc.X].Equals('#');
-    }
-    public bool IsNeutral(Location loc)
-    {
-        return Map[loc.Y][loc.X].Equals('.');
-    }
-    public bool IsActiveOwned(Location loc)
-    {
-        return Map[loc.Y][loc.X].Equals('O');
-    }
-    public bool IsInactiveOwned(Location loc)
-    {
-        return Map[loc.Y][loc.X].Equals('o');
-    }
-    public bool IsActiveOpponent(Location loc)
-    {
-        return Map[loc.Y][loc.X].Equals('X');
-    }
-    public bool IsInactiveOpponent(Location loc)
-    {
-        return Map[loc.Y][loc.X].Equals('x');
+        return Map.Where(l => l.Value.Equals('O')).ToList();
     }
     public bool CanMoveToHere(Location loc)
     {
-        return  loc.X >=0 && loc.X < 12 && loc.Y >=0 && loc.Y < 12 && !IsVoid(loc);
+        return  loc.X >=0 && loc.X < 12 && loc.Y >=0 && loc.Y < 12 && !loc.IsVoid();
     }
    
     public Location GetBestMove(Location loc)
@@ -188,19 +191,19 @@ class Game
             X = loc.X,
             Y = loc.Y+1
         };
-        if(CanMoveToHere(rightLoc) && IsNeutral(rightLoc))
+        if(CanMoveToHere(rightLoc) && rightLoc.IsNeutral())
         {
             return rightLoc;
         }
-        else if(CanMoveToHere(leftLoc) && IsNeutral(leftLoc))
+        else if(CanMoveToHere(leftLoc) && leftLoc.IsNeutral())
         {
             return leftLoc;
         }
-        else if(CanMoveToHere(upLoc) && IsNeutral(upLoc))
+        else if(CanMoveToHere(upLoc) && upLoc.IsNeutral())
         {
             return upLoc;
         }
-        else if(CanMoveToHere(bottomLoc) && IsNeutral(bottomLoc))
+        else if(CanMoveToHere(bottomLoc) && bottomLoc.IsNeutral())
         {
             return bottomLoc;
         }
@@ -208,6 +211,24 @@ class Game
         {
             return loc;
         }
+    }
+    public Location GetHQLocation()
+    {
+        return new Location { X = 0, Y = 0};
+    }
+
+    public Location GetLocationToTrainUnitAroundHQ()
+    {
+        var hqLocation = GetHQLocation();
+        var rightLoc = Map.FirstOrDefault(m => m.X == hqLocation.X+1 && m.Y == hqLocation.Y);
+        var bottomLoc = Map.FirstOrDefault(m => m.X == hqLocation.X && m.Y == hqLocation.Y+1);
+
+        if(rightLoc.IsActiveOwned() || rightLoc.IsNeutral())
+        {
+            return rightLoc;
+        }
+        
+        return bottomLoc;
     }
 }
 class Player
@@ -217,19 +238,56 @@ class Player
     public List<Unit> Units { get; set; } = new List<Unit>();
     public List<Building> Buildings { get; set; } = new List<Building>();
 
+    public List<Location> Locations { get; set; } = new List<Location>();
+
     public override string ToString()
     {
         return "Gold : " + Gold + " Income : " + Income;
+    }
+
+    public bool HaveEnoughGoldToUnitLvl1()
+    {
+        return Gold >= 10;
+    }
+
+    public Location GetTrainLocation()
+    {
+        return Locations.FirstOrDefault( l => l.Equals('O') && Units.Any(u => u.Location.X.Equals(l.X) && u.Location.Y.Equals(l.Y)) == null);
     }
 }
 class Location
 {
     public int X { get; set; }
     public int Y { get; set; }
+    public char Value { get; set; }
 
     public override string  ToString()
     {
-        return "X : " + X + " Y : " + Y;
+        return "X : " + X + " Y : " + Y + " Value : " + Value;
+    }
+    public bool IsVoid()
+    {
+        return Value.Equals('#');
+    }
+    public bool IsNeutral()
+    {
+        return Value.Equals('.');
+    }
+    public bool IsActiveOwned()
+    {
+        return Value.Equals('O');
+    }
+    public bool IsInactiveOwned()
+    {
+        return Value.Equals('o');
+    }
+    public bool IsActiveOpponent()
+    {
+        return Value.Equals('X');
+    }
+    public bool IsInactiveOpponent()
+    {
+        return Value.Equals('x');
     }
 }
 class Unit
