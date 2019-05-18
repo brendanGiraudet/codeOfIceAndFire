@@ -19,7 +19,6 @@ class CodeIceAndFire
     private const int TRAIN_COST_LEVEL_3 = 30;
     static void Main(string[] args)
     {
-        var game = new Game();
         string[] inputs;
         int numberMineSpots = int.Parse(Console.ReadLine());
         for (int i = 0; i < numberMineSpots; i++)
@@ -43,6 +42,7 @@ class CodeIceAndFire
                 Gold = int.Parse(Console.ReadLine()),
                 Income = int.Parse(Console.ReadLine())
             };
+            var game = new Game();
             // MAP
             for (int i = 0; i < 12; i++)
             {
@@ -93,7 +93,6 @@ class CodeIceAndFire
             // Write an action using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
             Console.Error.WriteLine(me);
-            Console.Error.WriteLine(me.Units.Count);
             me.Units.ForEach(u => 
             {
                 System.Console.Error.WriteLine(u);
@@ -164,7 +163,7 @@ class Game
     }
     public bool CanMoveToHere(Location loc)
     {
-        return !IsVoid(loc);
+        return  loc.X >=0 && loc.X < 12 && loc.Y >=0 && loc.Y < 12 && !IsVoid(loc);
     }
    
     public Location GetBestMove(Location loc)
