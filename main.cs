@@ -148,7 +148,7 @@ class CodeIceAndFire
             foreach(var unit in me.Units.Where(u => u.ID != 0 ))
             {
                 System.Console.Error.WriteLine("Unit : " + unit);
-                var bestLocation = me.MoveTo(opponent.GetHQLocation(), unit);
+                var bestLocation = game.MoveTo(opponent.GetHQLocation(), unit);
                 //var bestLocation = game.GetDiscoveredLocation(unit.Location);
                 if(bestLocation != null)
                 {
@@ -234,6 +234,40 @@ class Game
 
         return null;
     }
+     public Location MoveTo(Location loc, Unit unit)
+    {
+        System.Console.Error.WriteLine("MOVE TO : ");
+        // si je dois aller a droite
+        var rightLoc = Map.FirstOrDefault(m => m.X == unit.Location.X+1 && m.Y == unit.Location.Y);
+        if(unit.Location.X < loc.X && rightLoc != null && !rightLoc.IsVoid() && (rightLoc.IsNeutral() || rightLoc.IsActiveOpponent()))
+        {
+            System.Console.Error.WriteLine("right : " + rightLoc);
+            return rightLoc;
+        }
+        // si je dois aller en bas
+        var bottomLoc = Map.FirstOrDefault(m => m.X == unit.Location.X && m.Y == unit.Location.Y+1);
+        if(unit.Location.Y < loc.Y && bottomLoc != null && !bottomLoc.IsVoid() && (bottomLoc.IsNeutral() || bottomLoc.IsActiveOpponent()))
+        {
+            System.Console.Error.WriteLine("down : " + bottomLoc);
+            return bottomLoc;
+        }
+        // si je dois aller a gauche
+        var leftLoc = Map.FirstOrDefault(m => m.X == unit.Location.X-1 && m.Y == unit.Location.Y);
+        if(unit.Location.X > loc.X && leftLoc != null &&!leftLoc.IsVoid() && (leftLoc.IsNeutral() || leftLoc.IsActiveOpponent()))
+        {
+            System.Console.Error.WriteLine("left : " + leftLoc);
+            return leftLoc;
+        }
+        // si je dois aller en haut
+        var upLoc = Map.FirstOrDefault(m => m.X == unit.Location.X && m.Y == unit.Location.Y-1);
+        if(unit.Location.Y > loc.Y && upLoc != null && !upLoc.IsVoid()  && (upLoc.IsNeutral() || upLoc.IsActiveOpponent()))
+        {
+            System.Console.Error.WriteLine("up : " + upLoc);
+            return upLoc;
+        }
+        
+        return null;
+    }
 }
 class Player
 {
@@ -268,16 +302,6 @@ class Player
     {
         return Buildings.FirstOrDefault(b => b.Type.Equals(BuildingType.Hq)).Location;
     }
-
-    public Location MoveTo(Location loc, Unit unit)
-    {
-        return new Location
-        {
-            X = (unit.Location.X < loc.X)? unit.Location.X + 1 : (unit.Location.X > loc.X)? unit.Location.X-1 : unit.Location.X,
-            Y = (unit.Location.Y < loc.Y)? unit.Location.Y + 1 : (unit.Location.Y > loc.Y)? unit.Location.Y-1 : unit.Location.Y,
-        };
-    }
-
     public Location GetLocationToTrainUnitAroundHQ()
     {
         var hqLocation = GetHQLocation();
@@ -306,25 +330,21 @@ class Player
     public Location GetBestLocationAroundUnit(Location unitLocation)
     {
         var rightLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X+1 && l.Y == unitLocation.Y);
-        System.Console.Error.WriteLine("righunit :" + rightLoc);
         if(rightLoc != null && Units.FirstOrDefault(u => u.Location.X == rightLoc.X && u.Location.Y == rightLoc.Y) == null)
         {
             return rightLoc;
         }
         var leftLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X-1 && l.Y == unitLocation.Y);
-        System.Console.Error.WriteLine("left :" + leftLoc);
         if(leftLoc != null && Units.FirstOrDefault(u => u.Location.X == leftLoc.X && u.Location.Y == leftLoc.Y) == null)
         {
             return leftLoc;
         }
         var upLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X && l.Y == unitLocation.Y-1);
-        System.Console.Error.WriteLine("up :" + upLoc);
         if(upLoc != null && Units.FirstOrDefault(u => u.Location.X == upLoc.X && u.Location.Y == upLoc.Y) == null)
         {
             return upLoc;
         }
         var bottomLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X && l.Y == unitLocation.Y+1);
-        System.Console.Error.WriteLine("down :" + bottomLoc);
         if(bottomLoc != null && Units.FirstOrDefault(u => u.Location.X == bottomLoc.X && u.Location.Y == bottomLoc.Y) == null)
         {
             return bottomLoc;
