@@ -142,21 +142,31 @@ class CodeIceAndFire
             // partie mouvement des unités
             foreach(var unit in me.Units.Where(u => u.ID != 0 ))
             {
-                var bestLocation = game.GetBestMove(unit.Location);
-                if(bestLocation == null)
+                System.Console.Error.WriteLine("Unit : " + unit);
+                var bestLocation = game.GetDiscoveredLocation(unit.Location);
+                if(bestLocation != null)
+                {
+                    unit.Location.X = bestLocation.X;
+                    unit.Location.Y = bestLocation.Y;
+                    rep += "MOVE " + unit.ID + " " + unit.Location.X + " " + unit.Location.Y + ";";
+                    me.Locations.Add(new Location 
+                    {
+                        X = unit.Location.X,
+                        Y = unit.Location.Y,
+                        Value = 'O'
+                    });
+                    game.Map.FirstOrDefault(m => m.X == unit.Location.X && m.Y == unit.Location.Y).Value = 'O';
+                }
+                else
                 {
                     bestLocation = me.GetBestLocationAroundUnit(unit.Location);
+                    if(bestLocation != null)
+                    {
+                        unit.Location.X = bestLocation.X;
+                        unit.Location.Y = bestLocation.Y;
+                        rep += "MOVE " + unit.ID + " " + unit.Location.X + " " + unit.Location.Y + ";";
+                    }
                 }
-                unit.Location.X = bestLocation.X;
-                unit.Location.Y = bestLocation.Y;
-                rep += "MOVE " + unit.ID + " " + unit.Location.X + " " + unit.Location.Y + ";";
-                me.Locations.Add(new Location 
-                {
-                    X = unit.Location.X,
-                    Y = unit.Location.Y,
-                    Value = 'O'
-                });
-                game.Map.FirstOrDefault(m => m.X == unit.Location.X && m.Y == unit.Location.Y).Value = 'O';
             }
 
             System.Console.WriteLine(rep);
@@ -188,7 +198,7 @@ class Game
         return  loc.X >=0 && loc.X < 12 && loc.Y >=0 && loc.Y < 12 && !loc.IsVoid();
     }
    
-    public Location GetBestMove(Location loc)
+    public Location GetDiscoveredLocation(Location loc)
     {
         var rightLoc = Map.FirstOrDefault(m => m.X == loc.X+1 && m.Y == loc.Y);
         if(rightLoc != null && !rightLoc.IsVoid() && rightLoc.IsNeutral())
@@ -278,16 +288,19 @@ class Player
             return rightLoc;
         }
         var leftLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X-1 && l.Y == unitLocation.Y);
+        System.Console.Error.WriteLine("left :" + leftLoc);
         if(leftLoc != null && Units.FirstOrDefault(u => u.Location.X == leftLoc.X && u.Location.Y == leftLoc.Y) == null)
         {
             return leftLoc;
         }
         var upLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X && l.Y == unitLocation.Y-1);
+        System.Console.Error.WriteLine("up :" + upLoc);
         if(upLoc != null && Units.FirstOrDefault(u => u.Location.X == upLoc.X && u.Location.Y == upLoc.Y) == null)
         {
             return upLoc;
         }
         var bottomLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X && l.Y == unitLocation.Y+1);
+        System.Console.Error.WriteLine("down :" + bottomLoc);
         if(bottomLoc != null && Units.FirstOrDefault(u => u.Location.X == bottomLoc.X && u.Location.Y == bottomLoc.Y) == null)
         {
             return bottomLoc;
