@@ -67,15 +67,14 @@ class CodeIceAndFire
                 }
             }
             // Buildings
-            var buildings = new List<Building>();
             int buildingCount = int.Parse(Console.ReadLine());
             for (int i = 0; i < buildingCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
-                buildings.Add(new Building 
+                game.Buildings.Add(new Building 
                 {
                     Owner = int.Parse(inputs[0]),
-                    Type = int.Parse(inputs[1]),
+                    Type = (BuildingType) Enum.Parse(typeof(BuildingType), inputs[1]),
                     Location = new Location
                     {
                         X = int.Parse(inputs[2]),
@@ -83,15 +82,14 @@ class CodeIceAndFire
                     }
                 }); 
             }
-            me.Buildings = buildings.Where(b => b.Owner.Equals(ME)).ToList();
-            opponent.Buildings = buildings.Where(b => b.Owner.Equals(OPPONENT)).ToList();
+            me.Buildings = game.Buildings.Where(b => b.Owner.Equals(ME)).ToList();
+            opponent.Buildings = game.Buildings.Where(b => b.Owner.Equals(OPPONENT)).ToList();
             // Units
-            var units = new List<Unit>();
             int unitCount = int.Parse(Console.ReadLine());
             for (int i = 0; i < unitCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
-                units.Add(
+                game.Units.Add(
                     new Unit
                     {
                         Owner = int.Parse(inputs[0]),
@@ -105,17 +103,24 @@ class CodeIceAndFire
                     }
                 );
             }
-            me.Units = units.Where(u => u.Owner.Equals(ME)).ToList();
-            opponent.Units = units.Where(u => u.Owner.Equals(OPPONENT)).ToList();
+            me.Units = game.Units.Where(u => u.Owner.Equals(ME)).ToList();
+            opponent.Units = game.Units.Where(u => u.Owner.Equals(OPPONENT)).ToList();
 
             Console.Error.WriteLine(me);
+            System.Console.Error.WriteLine("Unités :");
             me.Units.ForEach(u => 
             {
                 System.Console.Error.WriteLine(u);
             });
+            System.Console.Error.WriteLine("Locations :");
             me.Locations.ForEach(l => 
             {
                 System.Console.Error.WriteLine(l);
+            });
+            System.Console.Error.WriteLine("Buildings :");
+            me.Buildings.ForEach(b => 
+            {
+                System.Console.Error.WriteLine(b);
             });
             
             var rep = "";            
@@ -128,7 +133,7 @@ class CodeIceAndFire
                 System.Console.Error.WriteLine("train " + trainLocation);
                 if(trainLocation == null)
                 {
-                    trainLocation = me.GetLocationToTrainUnitAroundHQ(game.GetHQLocation());
+                    trainLocation = me.GetLocationToTrainUnitAroundHQ();
                     System.Console.Error.WriteLine("train hq " + trainLocation);
                 }
                 if(me.HaveEnoughGoldToUnitLvl1() && trainLocation != null)
@@ -143,7 +148,8 @@ class CodeIceAndFire
             foreach(var unit in me.Units.Where(u => u.ID != 0 ))
             {
                 System.Console.Error.WriteLine("Unit : " + unit);
-                var bestLocation = game.GetDiscoveredLocation(unit.Location);
+                var bestLocation = me.MoveTo(opponent.GetHQLocation(), unit);
+                //var bestLocation = game.GetDiscoveredLocation(unit.Location);
                 if(bestLocation != null)
                 {
                     unit.Location.X = bestLocation.X;
@@ -189,6 +195,9 @@ class Game
 {
     public List<Location> Map { get; set; }  = new List<Location>();
 
+    public List<Building> Buildings { get; set; } = new List<Building>();
+    public List<Unit> Units { get; set; } = new List<Unit>();
+
     public List<Location> GetOwnedLocation()
     {
         return Map.Where(l => l.Value.Equals('O')).ToList();
@@ -197,38 +206,33 @@ class Game
     {
         return  loc.X >=0 && loc.X < 12 && loc.Y >=0 && loc.Y < 12 && !loc.IsVoid();
     }
-   
     public Location GetDiscoveredLocation(Location loc)
     {
         var rightLoc = Map.FirstOrDefault(m => m.X == loc.X+1 && m.Y == loc.Y);
-        if(rightLoc != null && !rightLoc.IsVoid() && rightLoc.IsNeutral())
+        if(rightLoc != null && !rightLoc.IsVoid() && (rightLoc.IsNeutral() || rightLoc.IsActiveOpponent()))
         {
             return rightLoc;
         }
         
         var leftLoc = Map.FirstOrDefault(m => m.X == loc.X-1 && m.Y == loc.Y);
-        if(leftLoc != null && !leftLoc.IsVoid() && leftLoc.IsNeutral())
+        if(leftLoc != null && !leftLoc.IsVoid() && (leftLoc.IsNeutral() || leftLoc.IsActiveOpponent()))
         {
             return leftLoc;
         }
 
         var upLoc = Map.FirstOrDefault(m => m.X == loc.X && m.Y == loc.Y-1);
-        if(upLoc != null && !upLoc.IsVoid() && upLoc.IsNeutral())
+        if(upLoc != null && !upLoc.IsVoid() && (upLoc.IsNeutral() || upLoc.IsActiveOpponent()))
         {
             return upLoc;
         }
         
         var bottomLoc = Map.FirstOrDefault(m => m.X == loc.X && m.Y == loc.Y+1);
-        if(bottomLoc != null && !bottomLoc.IsVoid() && bottomLoc.IsNeutral())
+        if(bottomLoc != null && !bottomLoc.IsVoid() && (bottomLoc.IsNeutral() || bottomLoc.IsActiveOpponent()))
         {
             return bottomLoc;
         }
 
         return null;
-    }
-    public Location GetHQLocation()
-    {
-        return new Location { X = 0, Y = 0};
     }
 }
 class Player
@@ -250,13 +254,33 @@ class Player
         return Gold >= 10;
     }
 
+    public bool HaveEnoughGoldToUnitLvl2()
+    {
+        return Gold >= 20;
+    }
+
     public Location GetTrainLocation()
     {
         return Locations.FirstOrDefault( l => l.Equals('O') && Units.Any(u => u.Location.X.Equals(l.X) && u.Location.Y.Equals(l.Y)) == null);
     }
 
-    public Location GetLocationToTrainUnitAroundHQ(Location hqLocation)
+    public Location GetHQLocation()
     {
+        return Buildings.FirstOrDefault(b => b.Type.Equals(BuildingType.Hq)).Location;
+    }
+
+    public Location MoveTo(Location loc, Unit unit)
+    {
+        return new Location
+        {
+            X = (unit.Location.X < loc.X)? unit.Location.X + 1 : (unit.Location.X > loc.X)? unit.Location.X-1 : unit.Location.X,
+            Y = (unit.Location.Y < loc.Y)? unit.Location.Y + 1 : (unit.Location.Y > loc.Y)? unit.Location.Y-1 : unit.Location.Y,
+        };
+    }
+
+    public Location GetLocationToTrainUnitAroundHQ()
+    {
+        var hqLocation = GetHQLocation();
         // si je n'ai pas d'unité à droite du HQ
         var rightLoc = new Location { X = hqLocation.X+1, Y = hqLocation.Y };
         if(Units.FirstOrDefault(u => u.Location.X.Equals(rightLoc.X) && u.Location.Y.Equals(rightLoc.Y)) == null)
@@ -358,7 +382,7 @@ class Unit
 class Building
 {
     public int Owner { get; set; }
-    public int Type { get; set; }
+    public BuildingType Type { get; set; }
     public Location Location { get; set; } = new Location();
 
     public override string ToString()
