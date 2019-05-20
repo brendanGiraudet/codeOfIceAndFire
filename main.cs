@@ -142,21 +142,21 @@ class CodeIceAndFire
                     me.Gold -= TRAIN_COST_LEVEL_3;
                     me.Units.Add(new Unit{ Location = new Location{ X = trainLocation.X, Y= trainLocation.Y, Value = '0'}, Level = 3});
                 }
-                else if(me.HaveEnoughGoldToUnitLvl2() && trainLocation != null && me.Units.Where(u => u.Level == 2).ToList().Count() <= 5)
+                else if(me.HaveEnoughGoldToUnitLvl2() && trainLocation != null && me.Units.Where(u => u.Level == 2).ToList().Count() < 4)
                 {
                     rep += "TRAIN 2 " + trainLocation.X + " " + trainLocation.Y + ";";
                     me.Gold -= TRAIN_COST_LEVEL_2;
                     me.Units.Add(new Unit{ Location = new Location{ X = trainLocation.X, Y= trainLocation.Y, Value = '0'}, Level = 2});
                 }
-                else if(me.HaveEnoughGoldToUnitLvl1() && trainLocation != null && me.Units.Where(u => u.Level == 1).ToList().Count() <= 8)
+                else if(me.HaveEnoughGoldToUnitLvl1() && trainLocation != null && me.Units.Where(u => u.Level == 1).ToList().Count() < 9)
                 {
                     rep += "TRAIN 1 " + trainLocation.X + " " + trainLocation.Y + ";";
                     me.Gold -= TRAIN_COST_LEVEL_1;
                     me.Units.Add(new Unit{ Location = new Location{ X = trainLocation.X, Y= trainLocation.Y, Value = '0'}, Level = 1});
                 }
             }while(
-                ((me.HaveEnoughGoldToUnitLvl1() && me.Units.Where(u => u.Level == 1).ToList().Count() <= 8)
-                ||(me.HaveEnoughGoldToUnitLvl2() && me.Units.Where(u => u.Level == 2).ToList().Count() <= 5)
+                ((me.HaveEnoughGoldToUnitLvl1() && me.Units.Where(u => u.Level == 1).ToList().Count() < 9 )
+                ||(me.HaveEnoughGoldToUnitLvl2() && me.Units.Where(u => u.Level == 2).ToList().Count() < 4)
                 || me.HaveEnoughGoldToUnitLvl3()) 
                 && trainLocation != null);
             
