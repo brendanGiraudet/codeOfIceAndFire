@@ -136,20 +136,43 @@ class CodeIceAndFire
                     trainLocation = me.GetLocationToTrainUnitAroundHQ();
                     System.Console.Error.WriteLine("train hq " + trainLocation);
                 }
-                if(me.HaveEnoughGoldToUnitLvl1() && trainLocation != null)
+                if(me.HaveEnoughGoldToUnitLvl3() && trainLocation != null)
+                {
+                    rep += "TRAIN 3 " + trainLocation.X + " " + trainLocation.Y + ";";
+                    me.Gold -= TRAIN_COST_LEVEL_3;
+                    me.Units.Add(new Unit{ Location = new Location{ X = trainLocation.X, Y= trainLocation.Y, Value = '0'}, Level = 3});
+                }
+                else if(me.HaveEnoughGoldToUnitLvl2() && trainLocation != null && me.Units.Where(u => u.Level == 2).ToList().Count() <= 5)
+                {
+                    rep += "TRAIN 2 " + trainLocation.X + " " + trainLocation.Y + ";";
+                    me.Gold -= TRAIN_COST_LEVEL_2;
+                    me.Units.Add(new Unit{ Location = new Location{ X = trainLocation.X, Y= trainLocation.Y, Value = '0'}, Level = 2});
+                }
+                else if(me.HaveEnoughGoldToUnitLvl1() && trainLocation != null && me.Units.Where(u => u.Level == 1).ToList().Count() <= 8)
                 {
                     rep += "TRAIN 1 " + trainLocation.X + " " + trainLocation.Y + ";";
                     me.Gold -= TRAIN_COST_LEVEL_1;
-                    me.Units.Add(new Unit{ Location = new Location{ X = trainLocation.X, Y= trainLocation.Y, Value = '0'}});
+                    me.Units.Add(new Unit{ Location = new Location{ X = trainLocation.X, Y= trainLocation.Y, Value = '0'}, Level = 1});
                 }
-            }while(me.HaveEnoughGoldToUnitLvl1() && trainLocation != null);
+            }while(
+                ((me.HaveEnoughGoldToUnitLvl1() && me.Units.Where(u => u.Level == 1).ToList().Count() <= 8)
+                ||(me.HaveEnoughGoldToUnitLvl2() && me.Units.Where(u => u.Level == 2).ToList().Count() <= 5)
+                || me.HaveEnoughGoldToUnitLvl3()) 
+                && trainLocation != null);
             
             // partie mouvement des unités
             foreach(var unit in me.Units.Where(u => u.ID != 0 ))
             {
                 System.Console.Error.WriteLine("Unit : " + unit);
-                var bestLocation = game.MoveTo(opponent.GetHQLocation(), unit);
-                //var bestLocation = game.GetDiscoveredLocation(unit.Location);
+                Location bestLocation = null;
+                if(unit.Level > 1 && opponent.Units.Count() != 0)
+                {
+                    bestLocation = game.MoveTo(opponent.Units.FirstOrDefault().Location, unit);
+                }
+                else
+                {
+                    bestLocation = game.MoveTo(opponent.GetHQLocation(), unit);
+                }
                 if(bestLocation != null)
                 {
                     unit.Location.X = bestLocation.X;
@@ -287,15 +310,17 @@ class Player
     {
         return Gold >= 10;
     }
-
     public bool HaveEnoughGoldToUnitLvl2()
     {
-        return Gold >= 20;
+        return Gold >= 20 && Income > 4;
     }
-
+    public bool HaveEnoughGoldToUnitLvl3()
+    {
+        return Gold >= 30 && Income > 20;
+    }
     public Location GetTrainLocation()
     {
-        return Locations.FirstOrDefault( l => l.Equals('O') && Units.Any(u => u.Location.X.Equals(l.X) && u.Location.Y.Equals(l.Y)) == null);
+        return Locations.LastOrDefault( l => !Units.Any(u => u.Location.X == l.X && u.Location.Y == l.Y) && !Buildings.Any(b => b.Location.X == l.X && b.Location.Y == l.Y));
     }
 
     public Location GetHQLocation()
