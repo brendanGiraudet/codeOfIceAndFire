@@ -13,7 +13,6 @@ class CodeIceAndFire
     private const int ME = 0;
     private const int OPPONENT = 1;
     private const int NEUTRAL = -1;
-
     private const int TRAIN_COST_LEVEL_1 = 10;
     private const int TRAIN_COST_LEVEL_2 = 20;
     private const int TRAIN_COST_LEVEL_3 = 30;
@@ -116,7 +115,6 @@ class CodeIceAndFire
             {
                 // Récuperation emplacement pour entrainer
                 trainLocation = me.GetTrainLocation();
-                System.Console.Error.WriteLine("train " + trainLocation);
                 if(trainLocation == null)
                 {
                     trainLocation = me.GetLocationToTrainUnitAroundHQ();
@@ -143,17 +141,23 @@ class CodeIceAndFire
                     me.Units.Add(new Unit{ Location = new Location{ X = trainLocation.X, Y= trainLocation.Y, Value = '0'}, Level = 1});
                 }
             }while(
-                ((me.HaveEnoughGoldToUnitLvl1() && me.Units.Where(u => u.Level == 1).ToList().Count() < 9 )
-                ||(me.HaveEnoughGoldToUnitLvl2() && me.Units.Where(u => u.Level == 2).ToList().Count() < 4)
+                ((me.HaveEnoughGoldToUnitLvl1() && me.GetUnitListLvl1().Count() < 11 )
+                ||(me.HaveEnoughGoldToUnitLvl2() && me.GetUnitListLvl2().Count() < 4)
                 || me.HaveEnoughGoldToUnitLvl3()) 
                 && trainLocation != null);
-            
-            // partie mouvement des unités
+            // Partie construction
+            foreach(var location in me.Locations.Where(l => !me.HaveUnit(l) && !me.HaveBuilding(l)))
+            {
+
+            }
+
+            // partie mouvement des unités et construction mines
             foreach(var unit in me.Units.Where(u => u.ID != 0 ))
             {
                 System.Console.Error.WriteLine("Unit : " + unit);
                 Location bestLocation = null;
                 var unitTargeted = opponent.Units.FirstOrDefault(u => !u.Targeted);
+                // si cible opponent
                 if(unit.Level > 1 && opponent.Units.Count() != 0 && unitTargeted != null)
                 {
                     System.Console.Error.WriteLine("Unit target : " + unitTargeted);
@@ -163,7 +167,7 @@ class CodeIceAndFire
                         unitTargeted.Targeted = true;
                     }
                 }
-                // si pas de cible ou  unnité de lvl 1
+                // si pas de cible opponent ou mine
                 else
                 {
                     bestLocation = game.MoveTo(opponent.GetHQLocation(), unit);
@@ -207,45 +211,8 @@ class Game
     public List<Building> Buildings { get; set; } = new List<Building>();
     public List<Unit> Units { get; set; } = new List<Unit>();
 
-    public List<Location> GetOwnedLocation()
-    {
-        return Map.Where(l => l.Value.Equals('O')).ToList();
-    }
-    public bool CanMoveToHere(Location loc)
-    {
-        return  loc.X >=0 && loc.X < 12 && loc.Y >=0 && loc.Y < 12 && !loc.IsVoid();
-    }
-    public Location GetDiscoveredLocation(Location loc)
-    {
-        var rightLoc = Map.FirstOrDefault(m => m.X == loc.X+1 && m.Y == loc.Y);
-        if(rightLoc != null && !rightLoc.IsVoid() && (rightLoc.IsNeutral() || rightLoc.IsActiveOpponent()))
-        {
-            return rightLoc;
-        }
-        
-        var leftLoc = Map.FirstOrDefault(m => m.X == loc.X-1 && m.Y == loc.Y);
-        if(leftLoc != null && !leftLoc.IsVoid() && (leftLoc.IsNeutral() || leftLoc.IsActiveOpponent()))
-        {
-            return leftLoc;
-        }
-
-        var upLoc = Map.FirstOrDefault(m => m.X == loc.X && m.Y == loc.Y-1);
-        if(upLoc != null && !upLoc.IsVoid() && (upLoc.IsNeutral() || upLoc.IsActiveOpponent()))
-        {
-            return upLoc;
-        }
-        
-        var bottomLoc = Map.FirstOrDefault(m => m.X == loc.X && m.Y == loc.Y+1);
-        if(bottomLoc != null && !bottomLoc.IsVoid() && (bottomLoc.IsNeutral() || bottomLoc.IsActiveOpponent()))
-        {
-            return bottomLoc;
-        }
-
-        return null;
-    }
      public Location MoveTo(Location loc, Unit unit)
     {
-        System.Console.Error.WriteLine("MOVE TO : ");
         // si je dois aller a droite
         var rightLoc = Map.FirstOrDefault(m => m.X == unit.Location.X+1 && m.Y == unit.Location.Y);
         if(unit.Location.X < loc.X 
@@ -253,7 +220,6 @@ class Game
             && !rightLoc.IsVoid() 
             && !Units.Any(u => u.Owner == 0 && u.Location.X == rightLoc.X && u.Location.Y == rightLoc.Y ))
         {
-            System.Console.Error.WriteLine("right : " + rightLoc);
             return rightLoc;
         }
         // si je dois aller en bas
@@ -263,7 +229,6 @@ class Game
             && !bottomLoc.IsVoid() 
             && !Units.Any(u => u.Owner == 0 && u.Location.X == bottomLoc.X && u.Location.Y == bottomLoc.Y ))
         {
-            System.Console.Error.WriteLine("down : " + bottomLoc);
             return bottomLoc;
         }
         // si je dois aller a gauche
@@ -273,7 +238,6 @@ class Game
             && !leftLoc.IsVoid() 
             && !Units.Any(u => u.Owner == 0 && u.Location.X == leftLoc.X && u.Location.Y == leftLoc.Y ))
         {
-            System.Console.Error.WriteLine("left : " + leftLoc);
             return leftLoc;
         }
         // si je dois aller en haut
@@ -283,7 +247,6 @@ class Game
             && !upLoc.IsVoid() 
             && !Units.Any(u => u.Owner == 0 && u.Location.X == upLoc.X && u.Location.Y == upLoc.Y ))
         {
-            System.Console.Error.WriteLine("up : " + upLoc);
             return upLoc;
         }
         
@@ -304,6 +267,26 @@ class Player
         return "Gold : " + Gold + " Income : " + Income;
     }
 
+    public List<Unit> GetUnitListLvl1()
+    {
+        return Units.Where(u => u.Level == 1).ToList();
+    }
+    public List<Unit> GetUnitListLvl2()
+    {
+        return Units.Where(u => u.Level == 2).ToList();
+    }
+    public List<Unit> GetUnitListLvl3()
+    {
+        return Units.Where(u => u.Level == 3).ToList();
+    }
+    public bool HaveUnit(Location location)
+    {
+        return Units.Any(u => u.Location.X == location.X && u.Location.Y == location.Y);
+    }
+    public bool HaveBuilding(Location location)
+    {
+        return Buildings.Any(u => u.Location.X == location.X && u.Location.Y == location.Y);
+    }
     public bool HaveEnoughGoldToUnitLvl1()
     {
         return Gold >= 10;
@@ -318,7 +301,7 @@ class Player
     }
     public Location GetTrainLocation()
     {
-        return Locations.LastOrDefault( l => !Units.Any(u => u.Location.X == l.X && u.Location.Y == l.Y) && !Buildings.Any(b => b.Location.X == l.X && b.Location.Y == l.Y));
+        return Locations.LastOrDefault(l => !HaveUnit(l) && !HaveBuilding(l));
     }
 
     public Location GetHQLocation()
@@ -330,19 +313,19 @@ class Player
         var hqLocation = GetHQLocation();
         // si je n'ai pas d'unité à droite du HQ
         var rightLoc = new Location { X = hqLocation.X+1, Y = hqLocation.Y };
-        if(Units.FirstOrDefault(u => u.Location.X.Equals(rightLoc.X) && u.Location.Y.Equals(rightLoc.Y)) == null)
+        if(!HaveUnit(rightLoc))
         {
             return rightLoc;
         }
         // si je n'ai pas d'unité en bas du HQ
         var bottomLoc = new Location { X = hqLocation.X, Y = hqLocation.Y +1 };
-        if(Units.FirstOrDefault(u => u.Location.X.Equals(bottomLoc.X) && u.Location.Y.Equals(bottomLoc.Y)) == null)
+        if(!HaveUnit(bottomLoc))
         {
             return bottomLoc;
         }
         // si je n'ai pas d'unité en bas a droite du HQ
         var rightBottomLoc = new Location { X = hqLocation.X+1, Y = hqLocation.Y +1 };
-        if(Units.FirstOrDefault(u => u.Location.X.Equals(rightBottomLoc.X) && u.Location.Y.Equals(rightBottomLoc.Y)) == null)
+        if(!HaveUnit(rightBottomLoc))
         {
             return rightBottomLoc;
         }
@@ -353,22 +336,22 @@ class Player
     public Location GetBestLocationAroundUnit(Location unitLocation)
     {
         var rightLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X+1 && l.Y == unitLocation.Y);
-        if(rightLoc != null && Units.FirstOrDefault(u => u.Location.X == rightLoc.X && u.Location.Y == rightLoc.Y) == null)
+        if(rightLoc != null && !HaveUnit(rightLoc))
         {
             return rightLoc;
         }
         var leftLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X-1 && l.Y == unitLocation.Y);
-        if(leftLoc != null && Units.FirstOrDefault(u => u.Location.X == leftLoc.X && u.Location.Y == leftLoc.Y) == null)
+        if(leftLoc != null && !HaveUnit(leftLoc))
         {
             return leftLoc;
         }
         var upLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X && l.Y == unitLocation.Y-1);
-        if(upLoc != null && Units.FirstOrDefault(u => u.Location.X == upLoc.X && u.Location.Y == upLoc.Y) == null)
+        if(upLoc != null && !HaveUnit(upLoc))
         {
             return upLoc;
         }
         var bottomLoc = Locations.FirstOrDefault(l => l.X == unitLocation.X && l.Y == unitLocation.Y+1);
-        if(bottomLoc != null && Units.FirstOrDefault(u => u.Location.X == bottomLoc.X && u.Location.Y == bottomLoc.Y) == null)
+        if(bottomLoc != null && !HaveUnit(bottomLoc))
         {
             return bottomLoc;
         }
@@ -428,6 +411,8 @@ class Building
     public int Owner { get; set; }
     public BuildingType Type { get; set; }
     public Location Location { get; set; } = new Location();
+
+    public bool Targeted { get; set; } = false;
 
     public override string ToString()
     {
