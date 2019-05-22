@@ -146,10 +146,15 @@ class CodeIceAndFire
                 || me.HaveEnoughGoldToUnitLvl3()) 
                 && trainLocation != null);
             // Partie construction
-            foreach(var location in me.Locations.Where(l => !me.HaveUnit(l) && !me.HaveBuilding(l)))
+            var buildLocation = me.GetFreeLocation();
+            do
             {
-
-            }
+                buildLocation = me.GetFreeLocation();
+                if(me.HaveEnoughGoldToMine() && buildLocation != null)
+                {
+                    rep += "BUILD MINE " + buildLocation.X + " " + buildLocation.Y + ";";
+                }
+            }while(me.HaveEnoughGoldToMine() && buildLocation != null);
 
             // partie mouvement des unités et construction mines
             foreach(var unit in me.Units.Where(u => u.ID != 0 ))
@@ -265,6 +270,15 @@ class Player
     public override string ToString()
     {
         return "Gold : " + Gold + " Income : " + Income;
+    }
+
+    public Location GetFreeLocation()
+    {
+        return Locations.FirstOrDefault(l => !HaveUnit(l) && !HaveBuilding(l));
+    }
+    public bool HaveEnoughGoldToMine()
+    {
+        return Gold > 20 + 4 * Buildings.Where(b => b.Type == BuildingType.Mine).Count();
     }
 
     public List<Unit> GetUnitListLvl1()
